@@ -12,7 +12,7 @@ func SetDB(d *sql.DB) {
 	db = d
 }
 
-func GetAllBlogs() blog.Blogs {
+func GetAllBlogs(dataChannel chan blog.Blogs) {
 	results, err := db.Query("SELECT id, title, content FROM blogs")
 	if err != nil {
 		panic(err.Error())
@@ -26,15 +26,17 @@ func GetAllBlogs() blog.Blogs {
 		}
 		ret = append(ret, b)
 	}
-	return ret
+	dataChannel <- ret
 }
 
-func GetBlogbyID(id int) (b blog.Blog, err error) {
-	err = db.QueryRow("SELECT id, title, content FROM blogs where id = ?", id).Scan(&b.ID, &b.Title, &b.Content)
+func GetBlogbyID(id int, dataChannel chan blog.Blog, errChannel chan error) {
+	var b blog.Blog
+	err := db.QueryRow("SELECT id, title, content FROM blogs where id = ?", id).Scan(&b.ID, &b.Title, &b.Content)
 	if err != nil {
-		return b, err
+		errChannel <- err
+		return
 	}
-	return b, nil
+	dataChannel <- b
 }
 
 func InsertintoBlogs(data blog.Blog, error_channel chan error) {
@@ -44,15 +46,12 @@ func InsertintoBlogs(data blog.Blog, error_channel chan error) {
 	defer insert.Close()
 }
 
-func UpdateBlogbyID(data blog.Blog) error {
+func UpdateBlogbyID(data blog.Blog, errorChannel chan error) {
 	_, err := db.Exec("Update blogs set title = ?, content = ? where id = ?", data.Title, data.Content, data.ID)
-	if err != nil {
-		return err
-	}
-	return nil
+	errorChannel <- err
 }
 
-func DeleteBlogbyID(id int) error {
+func DeleteBlogbyID(id int, errorChannel chan error) {
 	_, err := db.Exec("DELETE from blogs where id = ?", id)
-	return err
+	errorChannel <- err
 }

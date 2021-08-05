@@ -25,7 +25,7 @@ func INIT_Routes() {
 }
 
 func homePage(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("This is basic CRUD app"))
+	w.Write([]byte("This is Golang CRUD app"))
 }
 
 func createBlog(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +47,9 @@ func createBlog(w http.ResponseWriter, r *http.Request) {
 }
 
 func getBlogs(w http.ResponseWriter, r *http.Request) {
-	data := database.GetAllBlogs()
+	dataChannel := make(chan blog.Blogs)
+	go database.GetAllBlogs(dataChannel)
+	data := <-dataChannel
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
 }
@@ -58,14 +60,19 @@ func getBlogbyID(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
 		return
 	}
-	data, err := database.GetBlogbyID(id)
-	if err != nil {
+	dataChannel := make(chan blog.Blog)
+	errChannel := make(chan error)
+	go database.GetBlogbyID(id, dataChannel, errChannel)
+	select {
+	case data := <-dataChannel:
+		json.NewEncoder(w).Encode(data)
+		return
+	case err := <-errChannel:
 		json.NewEncoder(w).Encode(map[string]string{
-			"error": "Row not found",
+			"error": err.Error(),
 		})
 		return
 	}
-	json.NewEncoder(w).Encode(data)
 }
 
 func updateBlogbyID(w http.ResponseWriter, r *http.Request) {
@@ -76,13 +83,13 @@ func updateBlogbyID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = database.UpdateBlogbyID(data)
-
+	errorChannel := make(chan error)
+	go database.UpdateBlogbyID(data, errorChannel)
+	err = <- errorChannel
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	w.WriteHeader(200)
 }
 
@@ -93,7 +100,9 @@ func deleteBlogbyID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = database.DeleteBlogbyID(id)
+	errorChannel := make(chan error)
+	go database.DeleteBlogbyID(id, errorChannel)
+	err = <- errorChannel
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
