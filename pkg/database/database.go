@@ -37,14 +37,11 @@ func GetBlogbyID(id int) (b blog.Blog, err error) {
 	return b, nil
 }
 
-func InsertintoBlogs(data blog.Blog) error {
+func InsertintoBlogs(data blog.Blog, error_channel chan error) {
 	query := fmt.Sprintf("INSERT INTO blogs(title, content) VALUES ( '%s', '%s' )", data.Title, data.Content)
 	insert, err := db.Query(query)
-	if err != nil {
-		return err
-	}
+	error_channel <- err
 	defer insert.Close()
-	return nil
 }
 
 func UpdateBlogbyID(data blog.Blog) error {
@@ -56,6 +53,6 @@ func UpdateBlogbyID(data blog.Blog) error {
 }
 
 func DeleteBlogbyID(id int) error {
-	_, err := db.Exec("delete from blogs where id = ?", id)
-	return err;
+	_, err := db.Exec("DELETE from blogs where id = ?", id)
+	return err
 }

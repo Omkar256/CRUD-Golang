@@ -36,7 +36,9 @@ func createBlog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = database.InsertintoBlogs(data)
+	error_channel := make(chan error)
+	go database.InsertintoBlogs(data, error_channel)
+	err = <-error_channel
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
