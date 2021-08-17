@@ -6,6 +6,7 @@ import (
 	"crud-golang/pkg/database"
 
 	_ "github.com/go-sql-driver/mysql"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 func main() {
@@ -14,6 +15,8 @@ func main() {
 	database.SetDB(db)
 	defer db.Close()
 
-	routes.INIT_Routes()
+	tracer.Start()
+	defer tracer.Stop()
 
+	routes.INIT_Routes()
 }

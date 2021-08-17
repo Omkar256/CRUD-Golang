@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 func INIT_Routes() {
@@ -29,6 +30,9 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func createBlog(w http.ResponseWriter, r *http.Request) {
+	span := tracer.StartSpan("createBlog")
+	defer span.Finish()
+
 	var data blog.Blog
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
@@ -47,6 +51,9 @@ func createBlog(w http.ResponseWriter, r *http.Request) {
 }
 
 func getBlogs(w http.ResponseWriter, r *http.Request) {
+	span := tracer.StartSpan("getBlogs")
+	defer span.Finish()
+
 	dataChannel := make(chan blog.Blogs)
 	go database.GetAllBlogs(dataChannel)
 	data := <-dataChannel
@@ -55,6 +62,9 @@ func getBlogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func getBlogbyID(w http.ResponseWriter, r *http.Request) {
+	span := tracer.StartSpan("getBlogsbyID")
+	defer span.Finish()
+
 	id, err := parseId(r)
 	if err != nil {
 		w.WriteHeader(400)
@@ -76,6 +86,9 @@ func getBlogbyID(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateBlogbyID(w http.ResponseWriter, r *http.Request) {
+	span := tracer.StartSpan("updateBlogbyID")
+	defer span.Finish()
+
 	data := blog.Blog{}
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
@@ -85,7 +98,7 @@ func updateBlogbyID(w http.ResponseWriter, r *http.Request) {
 
 	errorChannel := make(chan error)
 	go database.UpdateBlogbyID(data, errorChannel)
-	err = <- errorChannel
+	err = <-errorChannel
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -94,6 +107,9 @@ func updateBlogbyID(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteBlogbyID(w http.ResponseWriter, r *http.Request) {
+	span := tracer.StartSpan("deleteBlogbyID")
+	defer span.Finish()
+
 	id, err := parseId(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -102,7 +118,7 @@ func deleteBlogbyID(w http.ResponseWriter, r *http.Request) {
 
 	errorChannel := make(chan error)
 	go database.DeleteBlogbyID(id, errorChannel)
-	err = <- errorChannel
+	err = <-errorChannel
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
