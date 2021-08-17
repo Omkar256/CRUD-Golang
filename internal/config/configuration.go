@@ -16,7 +16,12 @@ func DBConnect() *sql.DB {
 	if err != nil {
 		panic(err.Error())
 	} else {
-		fmt.Println("Connected to Database")
+		err = db.Ping()
+		if err != nil {
+			panic(err.Error())
+		} else {
+			fmt.Println("Connected to Database !")
+		}
 	}
 
 	return db
