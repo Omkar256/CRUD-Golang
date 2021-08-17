@@ -40,9 +40,12 @@ func createBlog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	child := tracer.StartSpan("insertInDatabase", tracer.ChildOf(span.Context()))
 	error_channel := make(chan error)
 	go database.InsertintoBlogs(data, error_channel)
 	err = <-error_channel
+	child.Finish(tracer.WithError(err))
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -54,9 +57,12 @@ func getBlogs(w http.ResponseWriter, r *http.Request) {
 	span := tracer.StartSpan("getBlogs")
 	defer span.Finish()
 
+	child := tracer.StartSpan("getBlogsDatabase", tracer.ChildOf(span.Context()))
 	dataChannel := make(chan blog.Blogs)
 	go database.GetAllBlogs(dataChannel)
 	data := <-dataChannel
+	child.Finish()
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
 }
@@ -70,17 +76,21 @@ func getBlogbyID(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
 		return
 	}
+
+	child := tracer.StartSpan("getBlogbyIDfromDatabase", tracer.ChildOf(span.Context()))
 	dataChannel := make(chan blog.Blog)
 	errChannel := make(chan error)
 	go database.GetBlogbyID(id, dataChannel, errChannel)
 	select {
 	case data := <-dataChannel:
 		json.NewEncoder(w).Encode(data)
+		child.Finish()
 		return
 	case err := <-errChannel:
 		json.NewEncoder(w).Encode(map[string]string{
 			"error": err.Error(),
 		})
+		child.Finish(tracer.WithError(err))
 		return
 	}
 }
@@ -96,9 +106,11 @@ func updateBlogbyID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	child := tracer.StartSpan("updateBloginDatabase", tracer.ChildOf(span.Context()))
 	errorChannel := make(chan error)
 	go database.UpdateBlogbyID(data, errorChannel)
 	err = <-errorChannel
+	child.Finish(tracer.WithError(err))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -116,9 +128,11 @@ func deleteBlogbyID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	child := tracer.StartSpan("deleteBlogbyIDfromDatabase", tracer.ChildOf(span.Context()))
 	errorChannel := make(chan error)
 	go database.DeleteBlogbyID(id, errorChannel)
 	err = <-errorChannel
+	child.Finish(tracer.WithError(err))
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
